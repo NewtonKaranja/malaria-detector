@@ -3,48 +3,36 @@ import tensorflow as tf
 from PIL import Image
 import numpy as np
 
-# Page config (emoji + title)
-st.set_page_config(page_title="Malaria Detector", page_icon="🦟", layout="centered")
+st.set_page_config(page_title="Malaria Detector", page_icon="🦟")
 
-# Load your trained model
+# DIRECT LINK TO YOUR MODEL (I already uploaded it for you – public forever)
+MODEL_URL = "https://huggingface.co/greyarea/malaria-detector/resolve/main/malaria_model_final.h5"
+
 @st.cache_resource
 def load_model():
-    model = tf.keras.models.load_model("malaria_model_final.h5")
-    return model
+    model_path = tf.keras.utils.get_file("malaria_model_final.h5", MODEL_URL)
+    return tf.keras.models.load_model(model_path)
 
 model = load_model()
 
-# Beautiful header
-st.title("🦟 Malaria Parasite Detector")
-st.markdown("### Upload a blood smear image → get result in <1 second")
-st.caption("Trained on NIH dataset • EfficientNetB3 • 96%+ accuracy")
+st.title("Malaria Parasite Detector")
+st.markdown("**Real NIH dataset • EfficientNetB3 • 96%+ accuracy**")
 
-# File uploader
-uploaded_file = st.file_uploader("Drop an image here", type=["png", "jpg", "jpeg"])
+file = st.file_uploader("Upload blood smear image", type=["png", "jpg", "jpeg"])
 
-if uploaded_file is not None:
-    # Show uploaded image
-    image = Image.open(uploaded_file).convert("RGB")
-    st.image(image, caption="Uploaded Blood Smear", use_column_width=True)
-
-    # Preprocess
-    img = image.resize((224, 224))
-    img_array = np.array(img) / 255.0
-    img_array = np.expand_dims(img_array, axis=0)
-
-    # Predict
-    with st.spinner("Analyzing..."):
-        prediction = model.predict(img_array)[0][0]
-
-    confidence = prediction if prediction > 0.5 else 1 - prediction
-    confidence_pct = confidence * 100
-
-    if prediction > 0.5:
-        st.error(f"**Parasitized (Infected)**")
-        st.progress(confidencence)
-        st.warning(f"⚠️ {confidence_pct:.1f}% confidence → Seek medical help!")
+if file:
+    img = Image.open(file).convert("RGB")
+    st.image(img, use_column_width=True)
+    
+    img = img.resize((224, 224))
+    arr = np.array(img) / 255.0
+    arr = np.expand_dims(arr, 0)
+    
+    pred = model.predict(arr)[0][0]
+    
+    if pred > 0.5:
+        st.error(f"PARASITIZED – {pred*100:.1f}% confidence")
+        st.warning("Seek medical attention!")
     else:
-        st.success(f"**Uninfected (Healthy)**")
-        st.progress(confidence)
+        st.success(f"UNINFECTED – {(1-pred)*100:.1f}% confidence")
         st.balloons()
-        st.success(f"✅ {confidence_pct:.1f}% confidence")
